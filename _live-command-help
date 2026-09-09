@@ -1,0 +1,18 @@
+#compdef live-command-help eg example
+
+local -a platforms commands
+platforms=(auto common osx linux windows)
+commands=( ${(f)$(live-command-help --list 2>/dev/null | awk '{print $1}' | sort -u)} )
+
+_arguments -s \
+  '(-p --platform)'{-p,--platform}'[choose operating system]:platform:($platforms)' \
+  '(-a --all)'{-a,--all}'[show all matching platform pages]' \
+  '(-s --search)'{-s,--search}'[search local pages]:words' \
+  '(-l --list)'{-l,--list}'[list local pages]' \
+  '--line[look up a shell input line]:line' \
+  '--suggest[print compact suggestions for shell integrations]' \
+  '--update[download the official TLDR page archive]' \
+  '--clear-cache[remove downloaded pages]' \
+  '--no-tldr[disable installed tldr client fallback]' \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '*:command:($commands)'

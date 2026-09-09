@@ -1,0 +1,514 @@
+#!/usr/bin/env zsh
+
+emulate -L zsh
+setopt pipe_fail no_aliases extended_glob
+
+readonly PROGRAM=${0:t}
+readonly PLUGIN_DIR=${0:A:h:h}
+readonly BUILTIN_DB="$PLUGIN_DIR/data/examples.db"
+readonly DEFAULT_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/live-command-help"
+readonly LEGACY_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ohmyzh-example-command"
+if [[ -n "${LIVE_COMMAND_HELP_CACHE_DIR:-}" ]]; then
+  readonly CACHE_DIR="$LIVE_COMMAND_HELP_CACHE_DIR"
+elif [[ -n "${EXAMPLE_COMMAND_CACHE_DIR:-}" ]]; then
+  readonly CACHE_DIR="$EXAMPLE_COMMAND_CACHE_DIR"
+elif [[ -d "$DEFAULT_CACHE_DIR/pages" || ! -d "$LEGACY_CACHE_DIR/pages" ]]; then
+  readonly CACHE_DIR="$DEFAULT_CACHE_DIR"
+else
+  # Reuse catalogs downloaded before the project was renamed.
+  readonly CACHE_DIR="$LEGACY_CACHE_DIR"
+fi
+readonly CACHE_PAGES="$CACHE_DIR/pages"
+readonly TLDR_ARCHIVE_URL="${LIVE_COMMAND_HELP_ARCHIVE_URL:-${EXAMPLE_COMMAND_ARCHIVE_URL:-https://github.com/tldr-pages/tldr/releases/latest/download/tldr-pages.en.zip}}"
+
+function usage() {
+  cat <<'EOF'
+Usage:
+  live-command-help [options] COMMAND [SUBCOMMAND ...]
+  live-command-help --line 'COMMAND ...'
+  live-command-help --search WORDS
+  live-command-help --list
+  live-command-help --update
+
+Options:
+  -p, --platform NAME  auto, common, osx, linux, or windows
+  -a, --all            show matching pages for every platform
+  -s, --search WORDS   search command names and summaries
+  -l, --list           list locally available command pages
+      --line TEXT      extract the command from a shell input line
+      --suggest        print compact live suggestions (used by the ZLE hook)
+      --update         download/update the official TLDR page archive
+      --clear-cache    remove downloaded pages
+      --no-tldr        do not fall back to an installed tldr client
+  -h, --help           show this help
+
+Examples:
+  live-command-help git commit
+  live-command-help docker compose
+  live-command-help -p windows robocopy
+  live-command-help --search "copy files"
+EOF
+}
+
+function detect_platform() {
+  case "$(uname -s 2>/dev/null)" in
+    Darwin) print osx ;;
+    Linux) print linux ;;
+    CYGWIN*|MINGW*|MSYS*) print windows ;;
+    *) print common ;;
+  esac
+}
+
+function color_enabled() {
+  [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != dumb ]]
+}
+
+function render_page() {
+  local line code rest
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! color_enabled; then
+      print -r -- "$line"
+      continue
+    fi
+    case "$line" in
+      '# '*)
+        rest=${line#\# }; rest=${rest//\%/%%}
+        print -P -- "%B%F{cyan}${rest}%f%b"
+        ;;
+      '> '*)
+        rest=${line#> }; rest=${rest//\%/%%}
+        print -P -- "%F{242}${rest}%f"
+        ;;
+      '- '*)
+        rest=${line#- }; rest=${rest//\%/%%}
+        print -P -- "%F{yellow}•%f ${rest}"
+        ;;
+      '`'*'`')
+        code=${line#\`}
+        code=${code%\`}
+        print -P -- "  %F{green}${code//\%/%%}%f"
+        ;;
+      *) print -r -- "$line" ;;
+    esac
+  done
+}
+
+function builtin_page() {
+  local command_name=$1 platform_name=$2
+  [[ -r "$BUILTIN_DB" ]] || return 1
+  awk -v wanted_command="$command_name" -v wanted_platform="$platform_name" '
+    BEGIN { found = 0 }
+    /^@@/ {
+      header = substr($0, 3)
+      split(header, fields, "\\|")
+      if (found) exit
+      if (fields[1] == wanted_command && fields[2] == wanted_platform) {
+        print "# " fields[1]
+        print "> " fields[3]
+        print ""
+        found = 1
+      }
+      next
+    }
+    found { print }
+    END { if (!found) exit 1 }
+  ' "$BUILTIN_DB"
+}
+
+function page_file() {
+  local command_name=$1 platform_name=$2 candidate
+  for candidate in \
+    "$CACHE_PAGES/$platform_name/$command_name.md" \
+    "$CACHE_PAGES/pages/$platform_name/$command_name.md"; do
+    [[ -r "$candidate" ]] && { print -r -- "$candidate"; return 0; }
+  done
+  return 1
+}
+
+function local_page() {
+  local command_name=$1 platform_name=$2 file
+  file=$(page_file "$command_name" "$platform_name") && { <"$file"; return 0; }
+  builtin_page "$command_name" "$platform_name"
+}
+
+function page_exists() {
+  local_page "$1" "$2" >/dev/null 2>&1
+}
+
+function normalize_words() {
+  local -a parsed=("$@") cleaned
+  local word skip_next=0 seen_command=0
+
+  for word in "${parsed[@]}"; do
+    word=${(Q)word}
+    (( skip_next )) && { skip_next=0; continue; }
+    if (( ! seen_command )); then
+      case "$word" in
+        sudo|command|builtin|noglob|nocorrect) continue ;;
+        env) continue ;;
+        -u|-g|-h|-p|-C) skip_next=1; continue ;;
+        --) continue ;;
+        [A-Za-z_][A-Za-z0-9_]#=*) continue ;;
+        -*) continue ;;
+        *) seen_command=1 ;;
+      esac
+    fi
+    cleaned+=("$word")
+  done
+  print -rC1 -- "${cleaned[@]}"
+}
+
+function normalize_line() {
+  local input=$1
+  local -a parsed
+  parsed=( ${(z)input} )
+  normalize_words "${(@Q)parsed}"
+}
+
+function command_candidates() {
+  local -a words=("$@") parts
+  (( ${#words} )) || return 1
+  words[1]=${words[1]:t}
+  local word
+  for word in "${words[@]}"; do
+    [[ "$word" == -* ]] && break
+    [[ "$word" == [A-Za-z0-9_.:+-]## ]] || break
+    parts+=("${word:l}")
+    (( ${#parts} >= 4 )) && break
+  done
+  local i
+  for (( i=${#parts}; i>=1; --i )); do
+    print -r -- "${(j:-:)parts[1,$i]}"
+  done
+}
+
+function show_local_candidate() {
+  local candidate=$1 platform_name=$2 all_platforms=$3
+  local -a platforms
+  if (( all_platforms )); then
+    platforms=(common osx linux windows)
+  elif [[ "$platform_name" == common ]]; then
+    platforms=(common)
+  else
+    platforms=("$platform_name" common)
+  fi
+
+  local p shown=0
+  for p in "${platforms[@]}"; do
+    if page_exists "$candidate" "$p"; then
+      (( shown )) && print
+      if (( all_platforms )); then
+        color_enabled && print -P -- "%B%F{magenta}Platform: $p%f%b" || print -- "Platform: $p"
+      fi
+      local_page "$candidate" "$p" | render_page
+      shown=1
+    fi
+  done
+  (( shown ))
+}
+
+function use_external_tldr() {
+  local candidate=$1 platform_name=$2
+  (( $+commands[tldr] )) || return 1
+  [[ "${commands[tldr]:A}" != "${0:A}" ]] || return 1
+  if [[ "$platform_name" == common ]]; then
+    command tldr --platform common "$candidate"
+  else
+    command tldr --platform "$platform_name" "$candidate"
+  fi
+}
+
+function list_pages() {
+  local output
+  output=$(
+    {
+    [[ -r "$BUILTIN_DB" ]] && awk -F'|' '/^@@/ { sub(/^@@/, "", $1); print $1 "\t" $2 }' "$BUILTIN_DB"
+    if [[ -d "$CACHE_PAGES" ]]; then
+      find "$CACHE_PAGES" -type f -name '*.md' 2>/dev/null | awk -F/ '{ name=$NF; sub(/\.md$/, "", name); print name "\t" $(NF-1) }'
+    fi
+    } | sort -u
+  )
+  if (( $+commands[column] )); then
+    print -r -- "$output" | column -t
+  else
+    print -r -- "$output"
+  fi
+}
+
+function search_pages() {
+  local query=${1:l}
+  local result
+  result=$(
+    {
+      [[ -r "$BUILTIN_DB" ]] && awk -F'|' -v q="$query" '
+        /^@@/ { line=tolower($0); if (index(line, q)) { sub(/^@@/, "", $1); print $1 "\t" $2 "\t" $3 } }
+      ' "$BUILTIN_DB"
+      if [[ -d "$CACHE_PAGES" ]]; then
+        grep -Ril --include='*.md' -- "$query" "$CACHE_PAGES" 2>/dev/null | while IFS= read -r file; do
+          print -r -- "${file:t:r}\t${file:h:t}"
+        done
+      fi
+    } | sort -u | head -100
+  )
+  [[ -n "$result" ]] || { print -u2 -- "$PROGRAM: no local matches for '$1'"; return 1; }
+  if (( $+commands[column] )); then
+    print -r -- "$result" | column -t
+  else
+    print -r -- "$result"
+  fi
+}
+
+function page_example_lines() {
+  local command_name=$1 platform_name=$2 limit=$3
+  local file
+  file=$(page_file "$command_name" "$platform_name")
+  if [[ -n "$file" ]]; then
+    awk -v limit="$limit" '
+      /^`.*`$/ {
+        print substr($0, 2, length($0) - 2)
+        if (++count >= limit) exit
+      }
+    ' "$file"
+    return $?
+  fi
+  [[ -r "$BUILTIN_DB" ]] || return 1
+  awk -v wanted_command="$command_name" -v wanted_platform="$platform_name" -v limit="$limit" '
+    /^@@/ {
+      header = substr($0, 3)
+      split(header, fields, "\\|")
+      if (found) exit
+      found = fields[1] == wanted_command && fields[2] == wanted_platform
+      next
+    }
+    found && /^`.*`$/ {
+      print substr($0, 2, length($0) - 2)
+      if (++count >= limit) exit
+    }
+    END { if (!count) exit 1 }
+  ' "$BUILTIN_DB"
+}
+
+function matching_page_names() {
+  local prefix=$1 platform_name=$2
+  local -a platforms
+  if [[ "$platform_name" == common ]]; then
+    platforms=(common)
+  else
+    platforms=("$platform_name" common)
+  fi
+
+  {
+    if [[ -r "$BUILTIN_DB" ]]; then
+      local p
+      for p in "${platforms[@]}"; do
+        awk -F'|' -v prefix="$prefix" -v platform="$p" '
+          /^@@/ {
+            sub(/^@@/, "", $1)
+            if ($2 == platform && index($1, prefix) == 1) print $1
+          }
+        ' "$BUILTIN_DB"
+      done
+    fi
+    if [[ -d "$CACHE_PAGES" ]]; then
+      local p file
+      for p in "${platforms[@]}"; do
+        for file in "$CACHE_PAGES/$p"/${prefix}*.md(N) "$CACHE_PAGES/pages/$p"/${prefix}*.md(N); do
+          print -r -- "${file:t:r}"
+        done
+      done
+    fi
+  } | sort -u
+}
+
+function suggest_examples() {
+  local platform_name=$1
+  shift
+  local -a candidates names examples
+  candidates=("${(@f)$(command_candidates "$@")}")
+  (( ${#candidates} )) || return 1
+
+  local limit=${LIVE_COMMAND_HELP_MAX_SUGGESTIONS:-3}
+  [[ "$limit" == <1-9> ]] || limit=3
+  local most_specific=${candidates[1]} p name line output
+  local -a platforms
+  if [[ "$platform_name" == common ]]; then
+    platforms=(common)
+  else
+    platforms=("$platform_name" common)
+  fi
+
+  # An exact page wins. This is what changes `git` suggestions into
+  # `git-commit` suggestions as soon as the subcommand is complete.
+  for p in "${platforms[@]}"; do
+    output=$(page_example_lines "$most_specific" "$p" "$limit")
+    if [[ -n "$output" ]]; then
+      print -r -- "$output"
+      return 0
+    fi
+  done
+
+  # For an incomplete command/subcommand, show the first example from nearby
+  # pages (for example, `git c` can suggest git-commit and git-checkout).
+  names=("${(@f)$(matching_page_names "$most_specific" "$platform_name")}")
+  examples=()
+  for name in "${names[@]}"; do
+    for p in "${platforms[@]}"; do
+      line=$(page_example_lines "$name" "$p" 1)
+      if [[ -n "$line" ]]; then
+        [[ ${examples[(Ie)$line]} -eq 0 ]] && examples+=("$line")
+        break
+      fi
+    done
+    (( ${#examples} >= limit )) && break
+  done
+  if (( ${#examples} )); then
+    print -rC1 -- "${examples[@]}"
+    return 0
+  fi
+
+  # If the newest word is not a known subcommand, retain useful suggestions
+  # from the nearest parent page.
+  for name in "${candidates[2,-1]}"; do
+    for p in "${platforms[@]}"; do
+      output=$(page_example_lines "$name" "$p" "$limit")
+      if [[ -n "$output" ]]; then
+        print -r -- "$output"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+function safe_cache_dir() {
+  [[ -n "$CACHE_DIR" && "$CACHE_DIR" != / && "$CACHE_DIR" != "$HOME" && "$CACHE_DIR" != . ]]
+}
+
+function update_pages() {
+  (( $+commands[curl] )) || { print -u2 -- "$PROGRAM: curl is required for --update"; return 1; }
+  (( $+commands[unzip] )) || { print -u2 -- "$PROGRAM: unzip is required for --update"; return 1; }
+  safe_cache_dir || { print -u2 -- "$PROGRAM: refusing unsafe cache directory: $CACHE_DIR"; return 1; }
+
+  mkdir -p -- "$CACHE_DIR" || return 1
+  local temporary
+  temporary=$(mktemp -d "$CACHE_DIR/update.XXXXXX") || return 1
+  local archive="$temporary/tldr.zip"
+  print -- "Downloading TLDR pages..."
+  if ! curl -fL --retry 2 --connect-timeout 10 -o "$archive" "$TLDR_ARCHIVE_URL"; then
+    rm -rf -- "$temporary"
+    print -u2 -- "$PROGRAM: download failed; the existing cache was not changed"
+    return 1
+  fi
+  if ! unzip -q "$archive" -d "$temporary/unpacked"; then
+    rm -rf -- "$temporary"
+    print -u2 -- "$PROGRAM: downloaded archive could not be unpacked"
+    return 1
+  fi
+
+  local pages_root
+  pages_root=$(find "$temporary/unpacked" -type d -name pages -print -quit)
+  if [[ -z "$pages_root" ]]; then
+    # Language-specific release archives can contain platform folders at root.
+    pages_root="$temporary/unpacked"
+  fi
+  [[ -d "$pages_root/common" ]] || {
+    rm -rf -- "$temporary"
+    print -u2 -- "$PROGRAM: archive did not contain TLDR pages"
+    return 1
+  }
+
+  rm -rf -- "$CACHE_PAGES.previous"
+  [[ -d "$CACHE_PAGES" ]] && mv -- "$CACHE_PAGES" "$CACHE_PAGES.previous"
+  mv -- "$pages_root" "$CACHE_PAGES" || {
+    [[ -d "$CACHE_PAGES.previous" ]] && mv -- "$CACHE_PAGES.previous" "$CACHE_PAGES"
+    rm -rf -- "$temporary"
+    return 1
+  }
+  rm -rf -- "$CACHE_PAGES.previous" "$temporary"
+  local count=$(find "$CACHE_PAGES" -type f -name '*.md' | wc -l | tr -d ' ')
+  print -- "Installed $count command pages in $CACHE_PAGES"
+}
+
+function clear_cache() {
+  safe_cache_dir || { print -u2 -- "$PROGRAM: refusing unsafe cache directory: $CACHE_DIR"; return 1; }
+  if [[ -d "$CACHE_PAGES" ]]; then
+    rm -rf -- "$CACHE_PAGES"
+    print -- "Removed downloaded command pages from $CACHE_PAGES"
+  else
+    print -- "The downloaded page cache is already empty."
+  fi
+}
+
+local platform=auto all_platforms=0 allow_tldr=1 mode=show query line_input
+local -a args
+while (( $# )); do
+  case "$1" in
+    -p|--platform)
+      (( $# >= 2 )) || { print -u2 -- "$PROGRAM: $1 requires a value"; exit 2; }
+      platform=${2:l}; shift 2 ;;
+    --platform=*) platform=${${1#*=}:l}; shift ;;
+    -a|--all) all_platforms=1; shift ;;
+    -s|--search)
+      (( $# >= 2 )) || { print -u2 -- "$PROGRAM: $1 requires a value"; exit 2; }
+      mode=search; query=$2; shift 2 ;;
+    -l|--list) mode=list; shift ;;
+    --line)
+      (( $# >= 2 )) || { print -u2 -- "$PROGRAM: --line requires text"; exit 2; }
+      mode=line; line_input=$2; shift 2 ;;
+    --suggest) mode=suggest; allow_tldr=0; shift ;;
+    --update) mode=update; shift ;;
+    --clear-cache) mode=clear; shift ;;
+    --no-tldr) allow_tldr=0; shift ;;
+    -h|--help) usage; exit 0 ;;
+    --) shift; args+=("$@"); break ;;
+    -*) print -u2 -- "$PROGRAM: unknown option: $1"; usage >&2; exit 2 ;;
+    *) args+=("$@"); break ;;
+  esac
+done
+
+case "$platform" in
+  auto) platform=$(detect_platform) ;;
+  common|osx|linux|windows) ;;
+  mac|macos|darwin) platform=osx ;;
+  win|win32) platform=windows ;;
+  *) print -u2 -- "$PROGRAM: unsupported platform '$platform'"; exit 2 ;;
+esac
+
+case "$mode" in
+  update) update_pages; exit $? ;;
+  clear) clear_cache; exit $? ;;
+  list) list_pages; exit $? ;;
+  search) search_pages "$query"; exit $? ;;
+  line)
+    args=("${(@f)$(normalize_line "$line_input")}")
+    ;;
+esac
+
+(( ${#args} )) || { usage >&2; exit 2; }
+if [[ "$mode" != line ]]; then
+  args=("${(@f)$(normalize_words "${args[@]}")}")
+fi
+(( ${#args} )) || { print -u2 -- "$PROGRAM: no command found in input"; exit 2; }
+
+if [[ "$mode" == suggest ]]; then
+  suggest_examples "$platform" "${args[@]}"
+  exit $?
+fi
+
+local candidate
+for candidate in "${(@f)$(command_candidates "${args[@]}")}"; do
+  if show_local_candidate "$candidate" "$platform" "$all_platforms"; then
+    exit 0
+  fi
+done
+
+if (( allow_tldr )) && [[ "${LIVE_COMMAND_HELP_USE_TLDR:-1}" != 0 ]]; then
+  for candidate in "${(@f)$(command_candidates "${args[@]}")}"; do
+    use_external_tldr "$candidate" "$platform" && exit 0
+  done
+fi
+
+print -u2 -- "$PROGRAM: no examples found for '${args[*]}'"
+print -u2 -- "Try: eg --search '${args[1]}'"
+print -u2 -- "For broad offline coverage, run: eg --update"
+exit 1

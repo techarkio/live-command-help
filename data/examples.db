@@ -1,0 +1,680 @@
+@@git|common|Distributed version control for tracking source code.
+- See the current branch and changed files:
+
+`git status`
+
+- Show a compact commit graph for every branch:
+
+`git log --oneline --graph --decorate --all`
+
+- Create and switch to a new branch:
+
+`git switch -c {{feature-name}}`
+@@git-commit|common|Record staged changes in the Git history.
+- Stage chosen files and commit them:
+
+`git add {{file1 file2}} && git commit -m "{{message}}"`
+
+- Amend the most recent commit without changing its message:
+
+`git commit --amend --no-edit`
+@@git-rebase|common|Replay commits on top of another branch.
+- Rebase the current branch on the latest main branch:
+
+`git fetch origin && git rebase origin/main`
+
+- Interactively edit the last five commits:
+
+`git rebase -i HEAD~5`
+@@gh|common|Work with GitHub from the command line.
+- Create a pull request interactively:
+
+`gh pr create`
+
+- Show checks for the current branch's pull request:
+
+`gh pr checks`
+@@docker|common|Build and run applications in containers.
+- List running containers:
+
+`docker ps`
+
+- Run an interactive, temporary Ubuntu container:
+
+`docker run --rm -it ubuntu bash`
+
+- Show recent logs and keep following them:
+
+`docker logs -f {{container}}`
+@@docker-compose|common|Run a multi-container application described by a Compose file.
+- Start services in the background and build changed images:
+
+`docker compose up -d --build`
+
+- Stop services and remove their containers and networks:
+
+`docker compose down`
+@@kubectl|common|Control Kubernetes clusters.
+- List pods in every namespace:
+
+`kubectl get pods --all-namespaces`
+
+- Follow logs from a deployment:
+
+`kubectl logs -f deployment/{{name}}`
+
+- Open a shell in a pod:
+
+`kubectl exec -it {{pod}} -- sh`
+@@helm|common|Manage Kubernetes packages with Helm.
+- Install or upgrade a release from a chart:
+
+`helm upgrade --install {{release}} {{chart}} --namespace {{namespace}} --create-namespace`
+
+- List releases in every namespace:
+
+`helm list --all-namespaces`
+@@terraform|common|Provision infrastructure from declarative configuration.
+- Format and validate the current configuration:
+
+`terraform fmt -recursive && terraform validate`
+
+- Preview and then apply changes:
+
+`terraform plan -out={{plan.tfplan}} && terraform apply {{plan.tfplan}}`
+@@ansible|common|Automate remote system configuration.
+- Ping every host in an inventory:
+
+`ansible all -i {{inventory.ini}} -m ping`
+
+- Run a playbook with an inventory:
+
+`ansible-playbook -i {{inventory.ini}} {{playbook.yml}}`
+@@aws|common|Manage Amazon Web Services resources.
+- Show the active caller identity:
+
+`aws sts get-caller-identity`
+
+- List S3 buckets:
+
+`aws s3 ls`
+@@az|common|Manage Microsoft Azure resources.
+- Sign in and show the current account:
+
+`az login && az account show`
+
+- List resource groups as a table:
+
+`az group list --output table`
+@@gcloud|common|Manage Google Cloud resources.
+- Set the active project:
+
+`gcloud config set project {{project-id}}`
+
+- List Compute Engine instances:
+
+`gcloud compute instances list`
+@@npm|common|Manage JavaScript packages and project scripts.
+- Install project dependencies exactly from the lockfile:
+
+`npm ci`
+
+- Run a package script and pass it extra arguments:
+
+`npm run {{script}} -- {{arguments}}`
+@@npx|common|Run a command from an npm package.
+- Run a package without installing it globally:
+
+`npx {{package}} {{arguments}}`
+
+- Force a particular package version:
+
+`npx {{package}}@{{version}} {{arguments}}`
+@@yarn|common|Manage JavaScript packages with Yarn.
+- Install locked project dependencies:
+
+`yarn install --immutable`
+
+- Add a development dependency:
+
+`yarn add --dev {{package}}`
+@@pnpm|common|Manage JavaScript packages with a space-efficient store.
+- Install project dependencies:
+
+`pnpm install`
+
+- Run a package script across workspace projects:
+
+`pnpm --recursive run {{script}}`
+@@node|common|Run JavaScript with Node.js.
+- Execute a JavaScript file:
+
+`node {{script.js}} {{arguments}}`
+
+- Evaluate an expression:
+
+`node --eval '{{console.log(expression)}}'`
+@@python|common|Run Python programs and modules.
+- Run a module using the selected interpreter:
+
+`python -m {{module}} {{arguments}}`
+
+- Start a local web server on port 8000:
+
+`python -m http.server 8000`
+@@pip|common|Install and manage Python packages.
+- Install packages from a requirements file:
+
+`python -m pip install -r requirements.txt`
+
+- Show packages with newer versions available:
+
+`python -m pip list --outdated`
+@@uv|common|Manage fast Python environments, dependencies, and tools.
+- Create an environment and install locked dependencies:
+
+`uv sync`
+
+- Run a command inside the project environment:
+
+`uv run {{command}}`
+@@cargo|common|Build and manage Rust projects.
+- Check a project without producing final binaries:
+
+`cargo check`
+
+- Run all tests, including their output:
+
+`cargo test -- --nocapture`
+@@go|common|Build and manage Go code.
+- Run all tests below the current module:
+
+`go test ./...`
+
+- Format and simplify all packages:
+
+`gofmt -w .`
+@@dotnet|common|Build and run .NET applications.
+- Create a console application:
+
+`dotnet new console -n {{ProjectName}}`
+
+- Restore, build, and run tests:
+
+`dotnet restore && dotnet build && dotnet test`
+@@curl|common|Transfer data to or from a URL.
+- Follow redirects and save using the remote filename:
+
+`curl -LO {{https://example.com/file}}`
+
+- Send JSON in a POST request:
+
+`curl -X POST -H 'Content-Type: application/json' -d '{{"key":"value"}}' {{url}}`
+@@wget|common|Download files from the web.
+- Download a file to a chosen path:
+
+`wget -O {{output.file}} {{url}}`
+
+- Continue a partially completed download:
+
+`wget -c {{url}}`
+@@ssh|common|Open a secure shell on a remote machine.
+- Connect using a username and port:
+
+`ssh -p {{port}} {{user}}@{{host}}`
+
+- Forward a local port to a service reachable by the server:
+
+`ssh -L {{local-port}}:{{destination-host}}:{{destination-port}} {{user}}@{{server}}`
+@@scp|common|Copy files over SSH.
+- Copy a local file to a remote directory:
+
+`scp {{file}} {{user}}@{{host}}:{{/remote/path/}}`
+
+- Recursively copy a remote directory locally:
+
+`scp -r {{user}}@{{host}}:{{/remote/directory}} {{local-directory}}`
+@@rsync|common|Synchronize files locally or over SSH.
+- Copy a directory while preserving metadata and showing progress:
+
+`rsync -avh --progress {{source/}} {{destination/}}`
+
+- Preview a remote synchronization that deletes extra destination files:
+
+`rsync -avhn --delete {{source/}} {{user}}@{{host}}:{{destination/}}`
+@@grep|common|Find lines matching a text pattern.
+- Search recursively with line numbers and ignore case:
+
+`grep -Rni -- '{{pattern}}' {{directory}}`
+
+- Show lines that do not match:
+
+`grep -v -- '{{pattern}}' {{file}}`
+@@rg|common|Recursively search text with ripgrep.
+- Search hidden files while respecting ignore files:
+
+`rg --hidden '{{pattern}}' {{path}}`
+
+- List files whose contents match a pattern:
+
+`rg -l '{{pattern}}'`
+@@find|common|Find files and directories by their properties.
+- Find files by case-insensitive extension:
+
+`find {{directory}} -type f -iname '*.{{ext}}'`
+
+- Find files changed within the last day:
+
+`find {{directory}} -type f -mtime -1`
+@@sed|common|Transform text using editing expressions.
+- Replace every occurrence in a stream:
+
+`sed 's/{{old}}/{{new}}/g' {{file}}`
+
+- Print a selected range of lines:
+
+`sed -n '{{10,20}}p' {{file}}`
+@@awk|common|Process structured lines of text.
+- Print the first and third whitespace-separated fields:
+
+`awk '{print $1, $3}' {{file}}`
+
+- Sum the values in the second field:
+
+`awk '{sum += $2} END {print sum}' {{file}}`
+@@jq|common|Query and transform JSON.
+- Pretty-print JSON from a file:
+
+`jq . {{file.json}}`
+
+- Select objects and print one property:
+
+`jq '.[] | select(.enabled == true) | .name' {{file.json}}`
+@@tar|common|Create and extract tar archives.
+- Create a compressed archive from a directory:
+
+`tar -czf {{archive.tar.gz}} {{directory}}`
+
+- Extract a compressed archive into a directory:
+
+`tar -xzf {{archive.tar.gz}} -C {{directory}}`
+@@chmod|common|Change file permission bits.
+- Make a script executable by its owner:
+
+`chmod u+x {{script}}`
+
+- Recursively give directories 755 and files 644 permissions:
+
+`find {{path}} -type d -exec chmod 755 {} + && find {{path}} -type f -exec chmod 644 {} +`
+@@ps|common|Show information about running processes.
+- Show every process with full details:
+
+`ps aux`
+
+- Find processes by a case-insensitive name:
+
+`ps aux | grep -i '[{{p}}]rocess-name'`
+@@kill|common|Send a signal to a process.
+- Ask a process to terminate normally:
+
+`kill {{pid}}`
+
+- Force termination only when a normal request did not work:
+
+`kill -KILL {{pid}}`
+@@lsof|common|List files and network sockets opened by processes.
+- Show the process listening on a TCP port:
+
+`lsof -nP -iTCP:{{port}} -sTCP:LISTEN`
+
+- Show files opened by a process:
+
+`lsof -p {{pid}}`
+@@tmux|common|Manage persistent terminal sessions.
+- Create a named session:
+
+`tmux new -s {{name}}`
+
+- List sessions and attach to one:
+
+`tmux ls && tmux attach -t {{name}}`
+@@make|common|Run targets defined in a Makefile.
+- Build the default target in parallel:
+
+`make -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)`
+
+- Preview commands without running them:
+
+`make --dry-run {{target}}`
+@@ffmpeg|common|Convert and process audio and video.
+- Convert a video to H.264 video and AAC audio:
+
+`ffmpeg -i {{input}} -c:v libx264 -c:a aac {{output.mp4}}`
+
+- Extract audio without re-encoding it:
+
+`ffmpeg -i {{input.mp4}} -vn -c:a copy {{output.m4a}}`
+@@sqlite3|common|Query SQLite databases.
+- Open a database interactively:
+
+`sqlite3 {{database.sqlite}}`
+
+- Export a query as CSV with headers:
+
+`sqlite3 -header -csv {{database.sqlite}} '{{SELECT * FROM table;}}'`
+@@brew|osx|Install and manage software with Homebrew on macOS.
+- Update metadata and upgrade installed formulae:
+
+`brew update && brew upgrade`
+
+- Find and install a package:
+
+`brew search {{name}} && brew install {{formula}}`
+
+- Diagnose common Homebrew problems:
+
+`brew doctor`
+@@open|osx|Open files, directories, and URLs with macOS applications.
+- Open the current directory in Finder:
+
+`open .`
+
+- Open a file with a chosen application:
+
+`open -a '{{Visual Studio Code}}' {{file}}`
+@@pbcopy|osx|Copy standard input to the macOS clipboard.
+- Copy a file's contents to the clipboard:
+
+`pbcopy < {{file}}`
+
+- Copy the current directory path:
+
+`pwd | pbcopy`
+@@defaults|osx|Read and write macOS application preferences.
+- Read all preferences for an application domain:
+
+`defaults read {{com.apple.finder}}`
+
+- Write a string preference, then restart the application if needed:
+
+`defaults write {{domain}} {{key}} -string '{{value}}'`
+@@launchctl|osx|Inspect and control macOS launch services.
+- List loaded jobs whose labels contain a word:
+
+`launchctl list | grep -i '{{name}}'`
+
+- Restart a user agent:
+
+`launchctl kickstart -k gui/$(id -u)/{{label}}`
+@@diskutil|osx|Inspect and manage disks on macOS.
+- List disks and volumes:
+
+`diskutil list`
+
+- Show detailed information about a volume:
+
+`diskutil info {{/Volumes/Name}}`
+@@apt|linux|Manage packages on Debian and Ubuntu.
+- Refresh metadata and install available upgrades:
+
+`sudo apt update && sudo apt upgrade`
+
+- Search for and install a package:
+
+`apt search {{name}} && sudo apt install {{package}}`
+@@dnf|linux|Manage packages on Fedora and related distributions.
+- Upgrade installed packages:
+
+`sudo dnf upgrade --refresh`
+
+- Find which package provides a file or command:
+
+`dnf provides '*/{{filename}}'`
+@@pacman|linux|Manage packages on Arch Linux.
+- Synchronize repositories and upgrade the system:
+
+`sudo pacman -Syu`
+
+- Search repositories and install a package:
+
+`pacman -Ss {{name}} && sudo pacman -S {{package}}`
+@@systemctl|linux|Control systemd services and units.
+- Show status and recent messages for a service:
+
+`systemctl status {{service}}`
+
+- Enable a service at boot and start it now:
+
+`sudo systemctl enable --now {{service}}`
+@@journalctl|linux|Read logs collected by systemd-journald.
+- Follow messages for a service:
+
+`journalctl -fu {{service}}`
+
+- Show high-priority messages since the current boot:
+
+`journalctl -b -p err`
+@@ip|linux|Inspect and configure Linux networking.
+- Show addresses on all interfaces:
+
+`ip address show`
+
+- Show the routing table:
+
+`ip route show`
+@@ss|linux|Inspect Linux network sockets.
+- Show listening TCP and UDP sockets with process details:
+
+`sudo ss -tulpn`
+
+- Show established TCP connections:
+
+`ss -tn state established`
+@@powershell|windows|Run PowerShell commands and scripts.
+- Run a script while passing named arguments:
+
+`powershell -File {{script.ps1}} -{{Name}} {{Value}}`
+
+- Run one command and exit:
+
+`powershell -NoProfile -Command "{{Get-Process}}"`
+@@winget|windows|Install and manage Windows applications.
+- Search for an application:
+
+`winget search {{name}}`
+
+- Install an exact package ID and accept prompts:
+
+`winget install --exact --id {{Publisher.Package}} --accept-source-agreements --accept-package-agreements`
+@@choco|windows|Manage Windows packages with Chocolatey.
+- Search for and install a package:
+
+`choco search {{name}} && choco install {{package}}`
+
+- Upgrade all installed packages after reviewing the list:
+
+`choco outdated && choco upgrade all`
+@@robocopy|windows|Reliably copy directory trees on Windows.
+- Mirror a source directory to a destination after a dry run:
+
+`robocopy {{source}} {{destination}} /MIR /L`
+
+- Copy recursively with restartable mode and a log:
+
+`robocopy {{source}} {{destination}} /E /Z /LOG:{{copy.log}}`
+@@tasklist|windows|List processes on Windows.
+- List all processes:
+
+`tasklist`
+
+- Filter processes by executable name:
+
+`tasklist /FI "IMAGENAME eq {{program.exe}}"`
+@@taskkill|windows|Terminate Windows processes.
+- End a process by its ID:
+
+`taskkill /PID {{pid}}`
+
+- Forcefully end a program and its child processes by name:
+
+`taskkill /F /T /IM {{program.exe}}`
+@@ipconfig|windows|Display and manage Windows network configuration.
+- Display detailed configuration for every adapter:
+
+`ipconfig /all`
+
+- Clear the DNS resolver cache:
+
+`ipconfig /flushdns`
+@@wsl|windows|Run and manage Windows Subsystem for Linux distributions.
+- List installed distributions and their versions:
+
+`wsl --list --verbose`
+
+- Run a command in a chosen distribution:
+
+`wsl --distribution {{Ubuntu}} -- {{command}}`
+@@ls|common|List directory contents.
+- Show hidden entries with human-readable sizes:
+
+`ls -lah {{directory}}`
+
+- Sort entries by modification time, newest first:
+
+`ls -lt {{directory}}`
+@@cd|common|Change the current shell directory.
+- Move to the parent directory:
+
+`cd ..`
+
+- Return to the previous directory:
+
+`cd -`
+@@pwd|common|Print the current directory path.
+- Print the logical path, preserving symbolic links:
+
+`pwd -L`
+
+- Print the physical path after resolving symbolic links:
+
+`pwd -P`
+@@cp|common|Copy files and directories.
+- Copy a file while preserving its metadata:
+
+`cp -p {{source}} {{destination}}`
+
+- Recursively copy a directory and show each file:
+
+`cp -Rv {{source-directory}} {{destination-directory}}`
+@@mv|common|Move or rename files and directories.
+- Rename a file:
+
+`mv {{old-name}} {{new-name}}`
+
+- Ask before overwriting an existing destination:
+
+`mv -i {{source}} {{destination}}`
+@@rm|common|Remove files and directories.
+- Ask before removing each selected file:
+
+`rm -i {{file1 file2}}`
+
+- Preview directory contents before considering recursive removal:
+
+`find {{directory}} -maxdepth 2 -print`
+@@mkdir|common|Create directories.
+- Create a directory and any missing parents:
+
+`mkdir -p {{path/to/directory}}`
+
+- Create several sibling directories:
+
+`mkdir {{one two three}}`
+@@df|common|Show free and used filesystem space.
+- Show human-readable space for all mounted filesystems:
+
+`df -h`
+
+- Show space for the filesystem containing a path:
+
+`df -h {{path}}`
+@@du|common|Estimate file and directory sizes.
+- Show the total human-readable size of a directory:
+
+`du -sh {{directory}}`
+
+- Show the size of each immediate child, sorted numerically:
+
+`du -sk {{directory}}/* | sort -n`
+@@head|common|Print the beginning of files or input.
+- Print the first 20 lines:
+
+`head -n 20 {{file}}`
+
+- Print the first 100 bytes:
+
+`head -c 100 {{file}}`
+@@tail|common|Print the end of files or follow appended data.
+- Print the last 20 lines:
+
+`tail -n 20 {{file}}`
+
+- Follow a log, retrying if it is recreated:
+
+`tail -F {{logfile}}`
+@@less|common|Interactively view text one screen at a time.
+- Open a file and show line numbers:
+
+`less -N {{file}}`
+
+- Follow growing input; press Ctrl-C to stop following:
+
+`less +F {{logfile}}`
+@@sort|common|Sort lines of text.
+- Sort numbers from largest to smallest:
+
+`sort -nr {{file}}`
+
+- Sort a CSV-like file by its second field:
+
+`sort -t, -k2,2 {{file}}`
+@@uniq|common|Report or remove adjacent duplicate lines.
+- Sort input, then count each unique line:
+
+`sort {{file}} | uniq -c`
+
+- Print only repeated adjacent lines:
+
+`uniq -d {{sorted-file}}`
+@@xargs|common|Build command invocations from standard input.
+- Run one command per null-delimited filename:
+
+`find {{directory}} -type f -print0 | xargs -0 -n1 {{command}}`
+
+- Preview the commands that would be run:
+
+`printf '%s\n' {{items}} | xargs -n1 echo {{command}}`
+@@tee|common|Copy standard input to files and standard output.
+- Save output while still displaying it:
+
+`{{command}} | tee {{output.log}}`
+
+- Append output to a file:
+
+`{{command}} | tee -a {{output.log}}`
+@@zip|common|Create and update ZIP archives.
+- Recursively archive a directory:
+
+`zip -r {{archive.zip}} {{directory}}`
+
+- Add several files to an archive:
+
+`zip {{archive.zip}} {{file1 file2}}`
+@@unzip|common|List or extract ZIP archives.
+- List archive contents without extracting:
+
+`unzip -l {{archive.zip}}`
+
+- Extract into a selected directory:
+
+`unzip {{archive.zip}} -d {{destination}}`
