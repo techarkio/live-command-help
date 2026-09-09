@@ -127,10 +127,9 @@ LIVE_COMMAND_HELP_CACHE_DIR="$HOME/.cache/live-command-help"
 The plugin uses standard Zsh Line Editor functionality and does not require
 iTerm2-specific configuration. It also works in other terminals that run Zsh.
 
-Some prompt or suggestion plugins may also write to Zsh's `POSTDISPLAY` area.
-If another plugin replaces the examples, place `live-command-help` after that
-plugin in the `plugins` array. The plugin preserves existing `POSTDISPLAY`
-content that it does not own.
+The examples use ZLE's managed message area. Each update replaces the previous
+panel, and the plugin does not modify `POSTDISPLAY` content owned by inline
+suggestion plugins.
 
 ## How it works
 
@@ -140,7 +139,7 @@ context changes, it:
 1. Reads the current editor buffer without evaluating it.
 2. Removes supported prefixes and expands a simple leading alias.
 3. Finds matching examples in the local catalog.
-4. Renders a compact panel through `POSTDISPLAY`.
+4. Replaces the previous panel through ZLE's managed message area.
 
 Repeated redraws of unchanged input reuse the previous result.
 

@@ -39,7 +39,6 @@ function _live_command_help_expand_alias() {
 }
 
 typeset -g _LIVE_COMMAND_HELP_LAST_CONTEXT=''
-typeset -g _LIVE_COMMAND_HELP_PANEL=''
 
 function _live_command_help_context() {
   emulate -L zsh
@@ -66,22 +65,11 @@ function _live_command_help_context() {
   reply=("${context[@]}")
 }
 
-function _live_command_help_remove_old_panel() {
-  emulate -L zsh
-  REPLY=$POSTDISPLAY
-  if [[ -n "$_LIVE_COMMAND_HELP_PANEL" && "$REPLY" == *${(b)_LIVE_COMMAND_HELP_PANEL} ]]; then
-    REPLY=${REPLY%${(b)_LIVE_COMMAND_HELP_PANEL}}
-  fi
-}
-
 function _live_command_help_live_update() {
   emulate -L zsh
   setopt extended_glob
-  local base suggestions line display context command_word
+  local suggestions line display context command_word panel
   local -a words reply context_words display_lines
-
-  _live_command_help_remove_old_panel
-  base=$REPLY
 
   # Whitespace splitting deliberately tolerates incomplete quotes while the
   # user is still typing. Exact shell parsing would reject that common state.
@@ -97,13 +85,11 @@ function _live_command_help_live_update() {
   [[ "$min_chars" == <1-9> ]] || min_chars=2
   if [[ -z "$context" || ${#command_word} -lt min_chars ]]; then
     _LIVE_COMMAND_HELP_LAST_CONTEXT=$context
-    _LIVE_COMMAND_HELP_PANEL=''
-    POSTDISPLAY=$base
+    zle -M ""
     return 0
   fi
 
   if [[ "$context" == "$_LIVE_COMMAND_HELP_LAST_CONTEXT" ]]; then
-    POSTDISPLAY="${base}${_LIVE_COMMAND_HELP_PANEL}"
     return 0
   fi
   _LIVE_COMMAND_HELP_LAST_CONTEXT=$context
@@ -111,8 +97,7 @@ function _live_command_help_live_update() {
   suggestions=$(NO_COLOR=1 LIVE_COMMAND_HELP_USE_TLDR=0 \
     command live-command-help --suggest -- "${context_words[@]}" 2>/dev/null)
   if [[ -z "$suggestions" ]]; then
-    _LIVE_COMMAND_HELP_PANEL=''
-    POSTDISPLAY=$base
+    zle -M ""
     return 0
   fi
 
@@ -125,11 +110,13 @@ function _live_command_help_live_update() {
     fi
     display_lines+=("    $display")
   done
-  _LIVE_COMMAND_HELP_PANEL=$'\n  examples:'
+  panel='  examples:'
   for display in "${display_lines[@]}"; do
-    _LIVE_COMMAND_HELP_PANEL+=$'\n'"$display"
+    panel+=$'\n'"$display"
   done
-  POSTDISPLAY="${base}${_LIVE_COMMAND_HELP_PANEL}"
+  # ZLE owns this message area, so a new panel replaces the previous one
+  # instead of leaving old multiline POSTDISPLAY content in the terminal.
+  zle -M "$panel"
   return 0
 }
 

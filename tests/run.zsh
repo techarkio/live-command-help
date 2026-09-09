@@ -57,4 +57,42 @@ print -r -- $'# fixture\n> Cached test page.\n\n- Test it:\n\n`fixture --ok`' > 
 assert_contains "downloaded cache page" "fixture --ok" "$COMMAND" fixture
 assert_contains "downloaded cache live suggestion" "fixture --ok" "$COMMAND" --suggest -- fixture
 
+typeset TEST_ZLE_MESSAGE=''
+typeset -gi TEST_ZLE_CALLS=0
+function zle() {
+  [[ "$1" == -M ]] || return 1
+  TEST_ZLE_MESSAGE=$2
+  (( ++TEST_ZLE_CALLS ))
+}
+
+source "$PROJECT_DIR/live-command-help.plugin.zsh"
+typeset BUFFER=git
+typeset POSTDISPLAY='existing inline suggestion'
+typeset -i COLUMNS=120
+_live_command_help_live_update
+if [[ "$TEST_ZLE_MESSAGE" != *"git status"* || "$POSTDISPLAY" != 'existing inline suggestion' ]]; then
+  print -u2 -- "not ok - ZLE message panel"
+  exit 1
+fi
+print -- "ok - ZLE message panel"
+(( ++passed ))
+
+BUFFER='git commit'
+_live_command_help_live_update
+if [[ "$TEST_ZLE_MESSAGE" != *"git commit -m"* || "$TEST_ZLE_MESSAGE" == *"git status"* ]]; then
+  print -u2 -- "not ok - latest panel replaces previous panel"
+  exit 1
+fi
+print -- "ok - latest panel replaces previous panel"
+(( ++passed ))
+
+BUFFER=''
+_live_command_help_live_update
+if [[ -n "$TEST_ZLE_MESSAGE" ]]; then
+  print -u2 -- "not ok - empty input clears panel"
+  exit 1
+fi
+print -- "ok - empty input clears panel"
+(( ++passed ))
+
 print -- "$passed tests passed"
