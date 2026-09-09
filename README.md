@@ -1,6 +1,6 @@
 # live-command-help
 
-`live-command-help` displays short, practical command examples below the active
+`live-command-help` displays short, practical command examples beside the active
 Zsh command line while you type. Suggestions automatically become more specific
 as the command grows.
 
@@ -62,8 +62,8 @@ You can also start a new terminal session or run `source ~/.zshrc`.
 
 ## Usage
 
-Type a command normally and pause briefly to read the examples displayed below
-the prompt:
+Type a command normally and pause briefly to read the examples displayed after
+the command line:
 
 ```text
 git
@@ -115,7 +115,7 @@ LIVE_COMMAND_HELP_MIN_CHARS=2
 # Maximum number of displayed examples. Default: 3.
 LIVE_COMMAND_HELP_MAX_SUGGESTIONS=3
 
-# Maximum display width. Default: terminal width.
+# Maximum hint width. Default: 60.
 LIVE_COMMAND_HELP_MAX_WIDTH=100
 
 # Override the catalog cache directory.
@@ -127,9 +127,10 @@ LIVE_COMMAND_HELP_CACHE_DIR="$HOME/.cache/live-command-help"
 The plugin uses standard Zsh Line Editor functionality and does not require
 iTerm2-specific configuration. It also works in other terminals that run Zsh.
 
-The examples use ZLE's managed message area. Each update replaces the previous
-panel, and the plugin does not modify `POSTDISPLAY` content owned by inline
-suggestion plugins.
+The examples use a single-line, non-editable ZLE `POSTDISPLAY` hint. Each update
+replaces the previous hint without moving the editor cursor. The hint is hidden
+when the current command leaves too little horizontal space. Existing
+`POSTDISPLAY` content from another plugin is preserved.
 
 ## How it works
 
@@ -139,7 +140,7 @@ context changes, it:
 1. Reads the current editor buffer without evaluating it.
 2. Removes supported prefixes and expands a simple leading alias.
 3. Finds matching examples in the local catalog.
-4. Replaces the previous panel through ZLE's managed message area.
+4. Replaces the previous single-line hint through `POSTDISPLAY`.
 
 Repeated redraws of unchanged input reuse the previous result.
 

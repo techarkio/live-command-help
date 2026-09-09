@@ -39,6 +39,7 @@ function _live_command_help_expand_alias() {
 }
 
 typeset -g _LIVE_COMMAND_HELP_LAST_CONTEXT=''
+typeset -g _LIVE_COMMAND_HELP_PANEL=''
 
 function _live_command_help_context() {
   emulate -L zsh
@@ -65,11 +66,29 @@ function _live_command_help_context() {
   reply=("${context[@]}")
 }
 
+function _live_command_help_remove_old_panel() {
+  emulate -L zsh
+  local prefix_length
+  REPLY=$POSTDISPLAY
+  if [[ -n "$_LIVE_COMMAND_HELP_PANEL" && "$REPLY" == *"$_LIVE_COMMAND_HELP_PANEL" ]]; then
+    prefix_length=$(( ${#REPLY} - ${#_LIVE_COMMAND_HELP_PANEL} ))
+    if (( prefix_length )); then
+      REPLY=${REPLY[1,$prefix_length]}
+    else
+      REPLY=''
+    fi
+  fi
+}
+
 function _live_command_help_live_update() {
   emulate -L zsh
   setopt extended_glob
-  local suggestions line display context command_word panel
-  local -a words reply context_words display_lines
+  local base suggestions line display context command_word panel
+  local requested_width available_width width
+  local -a words reply context_words examples
+
+  _live_command_help_remove_old_panel
+  base=$REPLY
 
   # Whitespace splitting deliberately tolerates incomplete quotes while the
   # user is still typing. Exact shell parsing would reject that common state.
@@ -85,11 +104,13 @@ function _live_command_help_live_update() {
   [[ "$min_chars" == <1-9> ]] || min_chars=2
   if [[ -z "$context" || ${#command_word} -lt min_chars ]]; then
     _LIVE_COMMAND_HELP_LAST_CONTEXT=$context
-    zle -M ""
+    _LIVE_COMMAND_HELP_PANEL=''
+    POSTDISPLAY=$base
     return 0
   fi
 
   if [[ "$context" == "$_LIVE_COMMAND_HELP_LAST_CONTEXT" ]]; then
+    POSTDISPLAY="${base}${_LIVE_COMMAND_HELP_PANEL}"
     return 0
   fi
   _LIVE_COMMAND_HELP_LAST_CONTEXT=$context
@@ -97,26 +118,33 @@ function _live_command_help_live_update() {
   suggestions=$(NO_COLOR=1 LIVE_COMMAND_HELP_USE_TLDR=0 \
     command live-command-help --suggest -- "${context_words[@]}" 2>/dev/null)
   if [[ -z "$suggestions" ]]; then
-    zle -M ""
+    _LIVE_COMMAND_HELP_PANEL=''
+    POSTDISPLAY=$base
     return 0
   fi
 
-  local width=${LIVE_COMMAND_HELP_MAX_WIDTH:-$(( COLUMNS - 6 ))}
-  [[ "$width" == <20-999> ]] || width=74
+  requested_width=${LIVE_COMMAND_HELP_MAX_WIDTH:-60}
+  [[ "$requested_width" == <20-999> ]] || requested_width=60
+  # Reserve room for the prompt and measure from the end of the full buffer,
+  # not CURSOR, so moving left or right cannot make the hint wrap.
+  available_width=$(( COLUMNS - ${#BUFFER} - ${#base} - 20 ))
+  width=$(( requested_width < available_width ? requested_width : available_width ))
+  if (( width < 20 )); then
+    _LIVE_COMMAND_HELP_PANEL=''
+    POSTDISPLAY=$base
+    return 0
+  fi
+
   for line in "${(@f)suggestions}"; do
     display=$line
-    if (( ${#display} > width )); then
-      display="${display[1,$(( width - 3 ))]}..."
-    fi
-    display_lines+=("    $display")
+    examples+=("$display")
   done
-  panel='  examples:'
-  for display in "${display_lines[@]}"; do
-    panel+=$'\n'"$display"
-  done
-  # ZLE owns this message area, so a new panel replaces the previous one
-  # instead of leaving old multiline POSTDISPLAY content in the terminal.
-  zle -M "$panel"
+  panel="  examples: ${(j: | :)examples}"
+  if (( ${#panel} > width )); then
+    panel="${panel[1,$(( width - 3 ))]}..."
+  fi
+  _LIVE_COMMAND_HELP_PANEL=$panel
+  POSTDISPLAY="${base}${_LIVE_COMMAND_HELP_PANEL}"
   return 0
 }
 
