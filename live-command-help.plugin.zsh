@@ -10,7 +10,7 @@ fi
 # _live-command-help file is discovered without doing extra work here.
 
 # Expand one Oh My Zsh alias for lookup purposes without evaluating it. This
-# lets `eg gst` show `git status` examples when the git plugin defines gst.
+# lets typing `gst` show `git status` examples when the git plugin defines gst.
 function _live_command_help_expand_alias() {
   emulate -L zsh
   setopt extended_glob
@@ -36,28 +36,6 @@ function _live_command_help_expand_alias() {
     fi
     break
   done
-}
-
-# Short, memorable functions. Define LIVE_COMMAND_HELP_NO_ALIASES=1 before
-# loading the plugin if either name conflicts with a command on your system.
-if [[ "${LIVE_COMMAND_HELP_NO_ALIASES:-0}" != 1 ]]; then
-  function eg() {
-    local -a reply
-    _live_command_help_expand_alias "$@"
-    command live-command-help "${reply[@]}"
-  }
-  function example() { eg "$@"; }
-fi
-
-function _live_command_help_widget() {
-  emulate -L zsh
-  local -a words reply
-  words=( ${=BUFFER} )
-  _live_command_help_expand_alias "${words[@]}"
-  zle -I
-  print
-  command live-command-help -- "${reply[@]}"
-  zle reset-prompt
 }
 
 typeset -g _LIVE_COMMAND_HELP_LAST_CONTEXT=''
@@ -155,18 +133,9 @@ function _live_command_help_live_update() {
   return 0
 }
 
-if [[ -o interactive ]]; then
-  if [[ "${LIVE_COMMAND_HELP_LIVE:-1}" != 0 ]]; then
-    zmodload zsh/zle 2>/dev/null
-    autoload -Uz add-zle-hook-widget
-    add-zle-hook-widget -d line-pre-redraw _live_command_help_live_update 2>/dev/null
-    add-zle-hook-widget line-pre-redraw _live_command_help_live_update
-  fi
-
-  if [[ "${LIVE_COMMAND_HELP_NO_WIDGET:-0}" != 1 ]]; then
-    zle -N live-command-help _live_command_help_widget
-    # Alt-E in most terminal profiles. Override after loading the plugin if
-    # this key is already important to your setup.
-    bindkey "${LIVE_COMMAND_HELP_KEY:-^[e}" live-command-help
-  fi
+if [[ -o interactive ]] && [[ "${LIVE_COMMAND_HELP_LIVE:-1}" != 0 ]]; then
+  zmodload zsh/zle 2>/dev/null
+  autoload -Uz add-zle-hook-widget
+  add-zle-hook-widget -d line-pre-redraw _live_command_help_live_update 2>/dev/null
+  add-zle-hook-widget line-pre-redraw _live_command_help_live_update
 fi

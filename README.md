@@ -1,196 +1,177 @@
 # live-command-help
 
-[![Tests](https://github.com/techarkio/live-command-help/actions/workflows/test.yml/badge.svg)](https://github.com/techarkio/live-command-help/actions/workflows/test.yml)
-
-An Oh My Zsh plugin that automatically shows short, practical examples while
-you type—without making you run a help command or read an entire manual page.
+`live-command-help` displays short, practical command examples below the active
+Zsh command line while you type. Suggestions automatically become more specific
+as the command grows.
 
 ```text
 % git
-  examples:
+  Examples:
     git status
-    git log --oneline --graph --decorate --all
-    git switch -c {{feature-name}}
+    git log --oneline --graph --decorate
+    git switch {{branch}}
 
 % git commit
-  examples:
-    git add {{file1 file2}} && git commit -m "{{message}}"
-    git commit --amend --no-edit
+  Examples:
+    git commit -m "{{message}}"
+    git commit --amend
+    git commit --fixup {{commit}}
 ```
 
-It works in iTerm2 and other Zsh terminals. The included starter catalog works
-offline. An optional download of the official [TLDR pages](https://github.com/tldr-pages/tldr)
-adds thousands of pages spanning common, macOS, Linux, and Windows commands.
-Windows examples are useful as a reference from macOS/Linux; running the plugin
-itself on Windows requires a Zsh environment such as WSL or MSYS2.
+The suggestions are informational only: the plugin does not insert, modify, or
+execute commands.
 
 ## Features
 
-- Shows and narrows examples automatically as a command is typed.
-- The panel is informational: it never changes or executes the editable line.
-- `eg COMMAND [SUBCOMMAND]` remains available for a larger, described view.
-- Press **Alt-E** to manually open that detailed view for the current line.
-- Understands prefixes such as `sudo`, `env`, `command`, and assignments.
-- Resolves simple Oh My Zsh aliases (`gst` is treated as `git status`).
-- Supports `auto`, `common`, `osx`, `linux`, and `windows` platforms.
-- Searches an offline starter catalog and a downloaded TLDR cache first.
-- Falls back to an already-installed `tldr` client when available.
-- Has no runtime dependency beyond Zsh for its built-in catalog.
+- Shows examples automatically—no lookup command or key binding is required.
+- Narrows suggestions for subcommands such as `git commit` and partial input
+  such as `git com`.
+- Understands common command prefixes, including `sudo`, `command`, `env`, and
+  environment-variable assignments.
+- Resolves simple aliases, including Oh My Zsh aliases such as `gst` for
+  `git status`.
+- Includes an offline starter catalog covering 83 commands across macOS,
+  Linux, Windows, and cross-platform tools.
+- Can download the full English [tldr-pages](https://github.com/tldr-pages/tldr)
+  catalog for thousands of additional command examples.
+- Performs no network requests while you type.
 
-## Install with Oh My Zsh
+## Requirements
 
-### Using zplug
+- Zsh and Oh My Zsh.
+- `curl` and `unzip` are required only when downloading the full catalog.
 
-Add this alongside your other `zplug` declarations, before `zplug check` and
-`zplug load`:
+## Installation
 
-```zsh
-zplug "techarkio/live-command-help", defer:3
-```
-
-`defer:3` loads the live panel after plugins such as autosuggestions and syntax
-highlighting. Install it and reload the configuration:
+Add `live-command-help` to the plugins array in `~/.zshrc`:
 
 ```zsh
-zplug install
-source ~/.zshrc
+plugins=(
+  git
+  live-command-help
+)
 ```
 
-For local development, use the checkout directly:
+Reload the shell:
 
 ```zsh
-zplug "/absolute/path/to/live-command-help", \
-  from:local, \
-  use:"live-command-help.plugin.zsh", \
-  defer:3
+omz reload
 ```
 
-### Using Oh My Zsh directly
-
-Clone the repository into the custom plugin directory:
-
-```zsh
-git clone https://github.com/techarkio/live-command-help \
-  "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/live-command-help"
-```
-
-Add `live-command-help` to the whitespace-separated plugin list in `~/.zshrc`:
-
-```zsh
-plugins=(git live-command-help)
-```
-
-Start a new shell or reload the configuration:
-
-```zsh
-source ~/.zshrc
-```
-
-### Optional iTerm2 key setup
-
-Live suggestions need no special iTerm2 configuration. If you also want the
-optional **Alt-E** detailed view and Alt-E types an accented character, open
-**iTerm2 → Settings → Profiles → Keys → General** and set the Left Option key
-to **Esc+**. Alternatively, choose any Zsh key sequence with
-`LIVE_COMMAND_HELP_KEY` as shown below.
-
-For the largest offline catalog, download the current English TLDR archive:
-
-```zsh
-eg --update
-```
-
-The update is stored under
-`${XDG_CACHE_HOME:-$HOME/.cache}/live-command-help`; it does not modify Oh
-My Zsh or the plugin checkout.
-
-If you used an older name of this plugin, an existing
-`~/.cache/ohmyzh-example-command/pages` catalog is detected automatically so it
-does not need to be downloaded again.
+You can also start a new terminal session or run `source ~/.zshrc`.
 
 ## Usage
 
-Just type a command normally. Suggestions appear once the command name has at
-least two characters. As you add a subcommand, the panel narrows automatically:
+Type a command normally and pause briefly to read the examples displayed below
+the prompt:
 
-```zsh
-git                  # shows general Git examples
-git c                # shows examples from matching Git subcommands
-git commit           # shows Git commit examples
-docker compose       # shows Docker Compose examples
+```text
+git
+git c
+git commit
+docker compose
+find
+tar
 ```
 
-The following explicit commands are optional:
+Continue typing to narrow the suggestions. Text wrapped in double braces, such
+as `{{branch}}` or `{{file}}`, is a placeholder to replace with your own value.
+
+## Download the full catalog
+
+The bundled starter catalog works immediately. To install the full English
+tldr-pages catalog, run:
 
 ```zsh
-eg git                         # general Git examples
-eg git rebase                  # resolves the git-rebase page first
-eg docker compose up           # resolves docker-compose before docker
-eg -p windows winget           # Windows examples from any host OS
-eg --all curl                  # every locally available platform variant
-eg --search "copy files"       # search names and descriptions
-eg --list                      # list locally available pages
-eg --update                    # update the complete TLDR cache
-eg --clear-cache               # remove only downloaded pages
+live-command-help --update
 ```
 
-While editing a command, press **Alt-E**. For example, type
-`sudo kubectl get pods`, press Alt-E to view the `kubectl` examples, then keep
-editing or press Enter normally. The widget never executes the typed command.
+The downloaded pages are stored in:
 
-Placeholders are shown as `{{value}}`; replace them before running an example.
-Examples are educational, so review commands—especially ones using `sudo`,
-deletion, permissions, disks, or production infrastructure—before executing.
+```text
+${XDG_CACHE_HOME:-$HOME/.cache}/live-command-help/pages
+```
+
+After the download finishes, suggestions use the local cache and remain fully
+offline. Run the update command again whenever you want to refresh the catalog.
+
+To remove the downloaded catalog and return to the bundled starter data:
+
+```zsh
+live-command-help --clear-cache
+```
 
 ## Configuration
 
-Set variables before Oh My Zsh is sourced:
+Set options in `~/.zshrc` before Oh My Zsh is sourced:
 
 ```zsh
-# Do not create the eg/example shortcut functions; use live-command-help directly.
-LIVE_COMMAND_HELP_NO_ALIASES=1
-
-# Do not bind Alt-E.
-LIVE_COMMAND_HELP_NO_WIDGET=1
-
-# Turn off the automatic panel (the eg command and Alt-E still work).
+# Disable automatic suggestions.
 LIVE_COMMAND_HELP_LIVE=0
 
-# Tune when and how much the automatic panel displays.
+# Minimum command length before suggestions appear. Default: 2.
 LIVE_COMMAND_HELP_MIN_CHARS=2
+
+# Maximum number of displayed examples. Default: 3.
 LIVE_COMMAND_HELP_MAX_SUGGESTIONS=3
+
+# Maximum display width. Default: terminal width.
 LIVE_COMMAND_HELP_MAX_WIDTH=100
 
-# Change the widget key (this example is Ctrl-X followed by E).
-LIVE_COMMAND_HELP_KEY='^Xe'
-
-# Do not invoke an installed tldr client as a final fallback.
-LIVE_COMMAND_HELP_USE_TLDR=0
-
-# Put downloaded pages somewhere else.
-LIVE_COMMAND_HELP_CACHE_DIR="$HOME/.local/share/live-command-help"
+# Override the catalog cache directory.
+LIVE_COMMAND_HELP_CACHE_DIR="$HOME/.cache/live-command-help"
 ```
 
-`NO_COLOR=1` disables colored output. `live-command-help --help` lists all options.
+## Terminal and plugin compatibility
 
-If you use a plugin that also draws inline text with ZLE `POSTDISPLAY`, put
-`live-command-help` after it in the Oh My Zsh plugin list so this plugin can
-preserve that text and append its panel below it.
+The plugin uses standard Zsh Line Editor functionality and does not require
+iTerm2-specific configuration. It also works in other terminals that run Zsh.
+
+Some prompt or suggestion plugins may also write to Zsh's `POSTDISPLAY` area.
+If another plugin replaces the examples, place `live-command-help` after that
+plugin in the `plugins` array. The plugin preserves existing `POSTDISPLAY`
+content that it does not own.
+
+## How it works
+
+`live-command-help` registers a `line-pre-redraw` ZLE hook. When the command
+context changes, it:
+
+1. Reads the current editor buffer without evaluating it.
+2. Removes supported prefixes and expands a simple leading alias.
+3. Finds matching examples in the local catalog.
+4. Renders a compact panel through `POSTDISPLAY`.
+
+Repeated redraws of unchanged input reuse the previous result.
+
+## Safety and privacy
+
+- The command line is never evaluated or executed by the plugin.
+- Typing does not send commands, arguments, paths, or other input over the
+  network.
+- Network access occurs only when you explicitly run
+  `live-command-help --update`.
+- Examples are reference material; review a command before running it.
+
+## Example data
+
+The plugin ships with an original starter catalog. The optional full catalog is
+downloaded from the official tldr-pages release archive and remains subject to
+the [tldr-pages license](https://github.com/tldr-pages/tldr/blob/main/LICENSE.md).
 
 ## Development
 
-Run the dependency-free test suite with:
+From the root of an Oh My Zsh checkout, run:
 
 ```zsh
-zsh tests/run.zsh
+zsh -n plugins/live-command-help/live-command-help.plugin.zsh
+zsh -n plugins/live-command-help/bin/live-command-help
+zsh plugins/live-command-help/tests/run.zsh
 ```
 
-The starter pages live in `data/examples.db`. Each page begins with
-`@@command|platform|summary` and uses the simple TLDR Markdown style below it.
-Downloaded TLDR pages take precedence over starter pages.
+The tests use a temporary cache directory and do not modify the user's catalog.
 
 ## License
 
-Plugin code and the original starter examples are released under the MIT
-License. Pages downloaded by `eg --update` come from the TLDR project and are
-covered by its license.
+This plugin is distributed under the same MIT license as Oh My Zsh. Downloaded
+tldr-pages content is licensed separately by the tldr-pages project.

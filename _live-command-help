@@ -1,4 +1,4 @@
-#compdef live-command-help eg example
+#compdef live-command-help
 
 local -a platforms commands
 platforms=(auto common osx linux windows)

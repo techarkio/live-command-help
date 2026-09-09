@@ -41,7 +41,9 @@ local alias_output
 alias_output=$(LIVE_COMMAND_HELP_PROJECT_DIR="$PROJECT_DIR" zsh -dfc '
   alias gst="git status"
   source "$LIVE_COMMAND_HELP_PROJECT_DIR/live-command-help.plugin.zsh"
-  NO_COLOR=1 LIVE_COMMAND_HELP_USE_TLDR=0 eg gst
+  local -a reply
+  _live_command_help_expand_alias gst
+  NO_COLOR=1 LIVE_COMMAND_HELP_USE_TLDR=0 live-command-help "${reply[@]}"
 ')
 if [[ "$alias_output" != *"# git"* ]]; then
   print -u2 -- "not ok - Oh My Zsh alias resolution"

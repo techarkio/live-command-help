@@ -509,6 +509,6 @@ if (( allow_tldr )) && [[ "${LIVE_COMMAND_HELP_USE_TLDR:-1}" != 0 ]]; then
 fi
 
 print -u2 -- "$PROGRAM: no examples found for '${args[*]}'"
-print -u2 -- "Try: eg --search '${args[1]}'"
-print -u2 -- "For broad offline coverage, run: eg --update"
+print -u2 -- "Try: live-command-help --search '${args[1]}'"
+print -u2 -- "For broad offline coverage, run: live-command-help --update"
 exit 1
