@@ -129,14 +129,16 @@ iTerm2-specific configuration. It also works in other terminals that run Zsh.
 
 The examples use a single-line, non-editable ZLE `POSTDISPLAY` hint. Each update
 replaces the previous hint without moving the editor cursor. The hint is hidden
-when the current command leaves too little horizontal space. Existing
-`POSTDISPLAY` content from another plugin is preserved.
+when the current command leaves too little horizontal space or contains an
+option such as `--help`. Existing `POSTDISPLAY` content from another plugin
+takes priority, so separate suggestions never appear joined as one command.
 
 When `zsh-autosuggestions` is present, `live-command-help` removes its own hint
 before an autosuggestion widget runs. Right Arrow, End, and partial-accept
 widgets therefore accept only the history or completion suggestion—not the
 example text. For the earliest integration, load `zsh-autosuggestions` before
-`live-command-help`.
+`live-command-help`. While an autosuggestion is visible, command examples remain
+hidden; they can appear after the autosuggestion is accepted or dismissed.
 
 The integration also filters help markers accidentally saved to shell history
 by early versions of this plugin.

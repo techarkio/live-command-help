@@ -40,12 +40,14 @@ function _live_command_help_expand_alias() {
 
 typeset -g _LIVE_COMMAND_HELP_LAST_CONTEXT=''
 typeset -g _LIVE_COMMAND_HELP_PANEL=''
+typeset -gi _LIVE_COMMAND_HELP_CONTEXT_HAS_OPTION=0
 
 function _live_command_help_context() {
   emulate -L zsh
   setopt extended_glob
   local -a input=("$@") context
   local word skip_next=0 seen_command=0
+  _LIVE_COMMAND_HELP_CONTEXT_HAS_OPTION=0
 
   for word in "${input[@]}"; do
     (( skip_next )) && { skip_next=0; continue; }
@@ -57,7 +59,10 @@ function _live_command_help_context() {
         [A-Za-z_][A-Za-z0-9_]#=*) continue ;;
         *) seen_command=1 ;;
       esac
-    elif [[ "$word" == -* || "$word" != [A-Za-z0-9_.:+-]## ]]; then
+    elif [[ "$word" == -* ]]; then
+      _LIVE_COMMAND_HELP_CONTEXT_HAS_OPTION=1
+      break
+    elif [[ "$word" != [A-Za-z0-9_.:+-]## ]]; then
       break
     fi
     context+=("$word")
@@ -165,6 +170,12 @@ function _live_command_help_live_update() {
     _live_command_help_remove_legacy_panel "$base"
     base=$REPLY
   fi
+  if [[ -n "$base" ]]; then
+    _LIVE_COMMAND_HELP_LAST_CONTEXT=''
+    _LIVE_COMMAND_HELP_PANEL=''
+    POSTDISPLAY=$base
+    return 0
+  fi
 
   # Whitespace splitting deliberately tolerates incomplete quotes while the
   # user is still typing. Exact shell parsing would reject that common state.
@@ -178,8 +189,9 @@ function _live_command_help_live_update() {
 
   local min_chars=${LIVE_COMMAND_HELP_MIN_CHARS:-2}
   [[ "$min_chars" == <1-9> ]] || min_chars=2
-  if [[ -z "$context" || ${#command_word} -lt min_chars ]]; then
-    _LIVE_COMMAND_HELP_LAST_CONTEXT=$context
+  if (( _LIVE_COMMAND_HELP_CONTEXT_HAS_OPTION )) ||
+     [[ -z "$context" || ${#command_word} -lt min_chars ]]; then
+    _LIVE_COMMAND_HELP_LAST_CONTEXT=''
     _LIVE_COMMAND_HELP_PANEL=''
     POSTDISPLAY=$base
     return 0

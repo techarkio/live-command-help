@@ -59,10 +59,10 @@ assert_contains "downloaded cache live suggestion" "fixture --ok" "$COMMAND" --s
 
 source "$PROJECT_DIR/live-command-help.plugin.zsh"
 typeset BUFFER=git
-typeset POSTDISPLAY='existing inline suggestion'
+typeset POSTDISPLAY=''
 typeset -i COLUMNS=120
 _live_command_help_live_update
-if [[ "$POSTDISPLAY" != *"git status"* || "$POSTDISPLAY" != 'existing inline suggestion'* ]]; then
+if [[ "$POSTDISPLAY" != *"git status"* ]]; then
   print -u2 -- "not ok - inline suggestion panel"
   exit 1
 fi
@@ -73,7 +73,17 @@ fi
 print -- "ok - inline suggestion panel"
 (( ++passed ))
 
+POSTDISPLAY="existing inline suggestion${_LIVE_COMMAND_HELP_PANEL}"
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != 'existing inline suggestion' ]]; then
+  print -u2 -- "not ok - existing inline suggestion takes priority"
+  exit 1
+fi
+print -- "ok - existing inline suggestion takes priority"
+(( ++passed ))
+
 BUFFER='git commit'
+POSTDISPLAY=''
 _live_command_help_live_update
 if [[ "$POSTDISPLAY" != *"git commit -m"* || "$POSTDISPLAY" == *"git status"* ]]; then
   print -u2 -- "not ok - latest panel replaces previous panel"
@@ -84,11 +94,21 @@ print -- "ok - latest panel replaces previous panel"
 
 BUFFER=''
 _live_command_help_live_update
-if [[ "$POSTDISPLAY" != 'existing inline suggestion' ]]; then
+if [[ -n "$POSTDISPLAY" ]]; then
   print -u2 -- "not ok - empty input clears panel"
   exit 1
 fi
 print -- "ok - empty input clears panel"
+(( ++passed ))
+
+BUFFER='scp --help'
+POSTDISPLAY=''
+_live_command_help_live_update
+if [[ -n "$POSTDISPLAY" ]]; then
+  print -u2 -- "not ok - command option suppresses help"
+  exit 1
+fi
+print -- "ok - command option suppresses help"
 (( ++passed ))
 
 function _zsh_autosuggest_accept() {
