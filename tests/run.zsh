@@ -61,6 +61,19 @@ source "$PROJECT_DIR/live-command-help.plugin.zsh"
 typeset BUFFER=git
 typeset POSTDISPLAY=''
 typeset -i COLUMNS=120
+
+function reset_live_command_help_state() {
+  _LIVE_COMMAND_HELP_LAST_CONTEXT=''
+  _LIVE_COMMAND_HELP_PANEL=''
+  _LIVE_COMMAND_HELP_LAST_BUFFER=''
+  _LIVE_COMMAND_HELP_SAVED_AUTOSUGGESTION=''
+  _LIVE_COMMAND_HELP_SAVED_AUTOSUGGESTION_BUFFER=''
+  _LIVE_COMMAND_HELP_MANUAL_VIEW=''
+  _LIVE_COMMAND_HELP_MANUAL_VIEW_BUFFER=''
+  _LIVE_COMMAND_HELP_SUPPRESS_BUFFER=''
+  _LIVE_COMMAND_HELP_AUTOSUGGEST_DELIVERING=0
+}
+
 _live_command_help_live_update
 if [[ "$POSTDISPLAY" != *"git status"* ]]; then
   print -u2 -- "not ok - inline suggestion panel"
@@ -80,6 +93,51 @@ if [[ "$POSTDISPLAY" != 'existing inline suggestion' ]]; then
   exit 1
 fi
 print -- "ok - existing inline suggestion takes priority"
+(( ++passed ))
+
+reset_live_command_help_state
+BUFFER='scp'
+POSTDISPLAY=' --help'
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != *'examples:'* || "$POSTDISPLAY" == ' --help' ]]; then
+  print -u2 -- "not ok - trivial help autosuggestion yields to examples"
+  exit 1
+fi
+print -- "ok - trivial help autosuggestion yields to examples"
+(( ++passed ))
+
+# Widgets are tested outside an interactive ZLE session, so replace redisplay
+# with a harmless function while exercising the view state changes.
+function zle() { return 0 }
+_live_command_help_toggle
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != ' --help' ]]; then
+  print -u2 -- "not ok - toggle restores trivial autosuggestion"
+  exit 1
+fi
+print -- "ok - toggle restores trivial autosuggestion"
+(( ++passed ))
+
+_live_command_help_toggle
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != *'examples:'* || "$POSTDISPLAY" == *' --help'* ]]; then
+  print -u2 -- "not ok - toggle returns to examples"
+  exit 1
+fi
+print -- "ok - toggle returns to examples"
+(( ++passed ))
+
+reset_live_command_help_state
+BUFFER='git'
+POSTDISPLAY=' status'
+_live_command_help_live_update
+_live_command_help_toggle
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != *'examples:'* || "$POSTDISPLAY" == ' status'* ]]; then
+  print -u2 -- "not ok - toggle shows examples over useful autosuggestion"
+  exit 1
+fi
+print -- "ok - toggle shows examples over useful autosuggestion"
 (( ++passed ))
 
 BUFFER='git commit'
@@ -125,7 +183,29 @@ function _zsh_autosuggest_partial_accept() {
 function _zsh_autosuggest_modify() {
   TEST_AUTOSUGGEST_POSTDISPLAY=$POSTDISPLAY
 }
+function _zsh_autosuggest_suggest() {
+  local suggestion=$1
+  POSTDISPLAY=${suggestion#$BUFFER}
+}
+typeset -ga ZSH_AUTOSUGGEST_IGNORE_WIDGETS=(beep)
 _live_command_help_install_autosuggest_integration
+if (( ! ${ZSH_AUTOSUGGEST_IGNORE_WIDGETS[(Ie)live-command-help-toggle]} )); then
+  print -u2 -- "not ok - autosuggestions ignores help toggle widget"
+  exit 1
+fi
+print -- "ok - autosuggestions ignores help toggle widget"
+(( ++passed ))
+
+reset_live_command_help_state
+BUFFER='scp'
+POSTDISPLAY=''
+_zsh_autosuggest_suggest 'scp --help'
+if [[ "$POSTDISPLAY" != *'examples:'* || "$POSTDISPLAY" == ' --help' ]]; then
+  print -u2 -- "not ok - async trivial help suggestion yields to examples"
+  exit 1
+fi
+print -- "ok - async trivial help suggestion yields to examples"
+(( ++passed ))
 
 BUFFER='cd Wor'
 POSTDISPLAY='kplace/project'
@@ -137,6 +217,34 @@ if [[ "$BUFFER" != 'cd Workplace/project' || -n "$POSTDISPLAY" ]]; then
   exit 1
 fi
 print -- "ok - autosuggestion accepts no help text"
+(( ++passed ))
+
+_live_command_help_live_update
+if [[ -n "$POSTDISPLAY" ]]; then
+  print -u2 -- "not ok - accepted autosuggestion suppresses examples"
+  exit 1
+fi
+print -- "ok - accepted autosuggestion suppresses examples"
+(( ++passed ))
+
+BUFFER+='x'
+POSTDISPLAY=''
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != *'examples:'* ]]; then
+  print -u2 -- "not ok - editing accepted suggestion restores examples"
+  exit 1
+fi
+print -- "ok - editing accepted suggestion restores examples"
+(( ++passed ))
+
+BUFFER=${BUFFER%x}
+POSTDISPLAY=''
+_live_command_help_live_update
+if [[ "$POSTDISPLAY" != *'examples:'* ]]; then
+  print -u2 -- "not ok - suppression stays cleared after an edit"
+  exit 1
+fi
+print -- "ok - suppression stays cleared after an edit"
 (( ++passed ))
 
 BUFFER='git'

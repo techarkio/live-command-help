@@ -5,17 +5,8 @@ Zsh command line while you type. Suggestions automatically become more specific
 as the command grows.
 
 ```text
-% git
-  Examples:
-    git status
-    git log --oneline --graph --decorate
-    git switch {{branch}}
-
-% git commit
-  Examples:
-    git commit -m "{{message}}"
-    git commit --amend
-    git commit --fixup {{commit}}
+% git  examples: git status | git log --oneline --graph --decorate | git switch {{branch}}
+% git commit  examples: git commit -m "{{message}}" | git commit --amend | git commit --fixup {{commit}}
 ```
 
 The suggestions are informational only: the plugin does not insert, modify, or
@@ -24,6 +15,8 @@ execute commands.
 ## Features
 
 - Shows examples automatically—no lookup command or key binding is required.
+- Defers to useful history suggestions from `zsh-autosuggestions` instead of
+  displaying two competing hints.
 - Narrows suggestions for subcommands such as `git commit` and partial input
   such as `git com`.
 - Understands common command prefixes, including `sudo`, `command`, `env`, and
@@ -76,6 +69,29 @@ tar
 
 Continue typing to narrow the suggestions. Text wrapped in double braces, such
 as `{{branch}}` or `{{file}}`, is a placeholder to replace with your own value.
+
+### History suggestions and the help shortcut
+
+When `zsh-autosuggestions` is installed, the two plugins follow these rules:
+
+- A useful history suggestion is shown by itself; command examples stay hidden.
+- A history suggestion whose remaining text is only `--help`, `-h`, or `help`
+  is replaced by more practical examples.
+- If there is no history suggestion, examples appear normally.
+- After you accept a history suggestion, examples stay hidden until you edit
+  the command.
+- If you have already typed an option, examples stay hidden.
+
+You can optionally bind a shortcut that switches between the active history
+suggestion and command examples. Add this after your plugins are loaded in
+`~/.zshrc`:
+
+```zsh
+bindkey '^Xh' live-command-help-toggle
+```
+
+Press `Ctrl-X`, then `h` to switch views. Press it again to return to the
+history suggestion. The plugin deliberately does not claim a default key.
 
 ## Download the full catalog
 
@@ -130,15 +146,16 @@ iTerm2-specific configuration. It also works in other terminals that run Zsh.
 The examples use a single-line, non-editable ZLE `POSTDISPLAY` hint. Each update
 replaces the previous hint without moving the editor cursor. The hint is hidden
 when the current command leaves too little horizontal space or contains an
-option such as `--help`. Existing `POSTDISPLAY` content from another plugin
-takes priority, so separate suggestions never appear joined as one command.
+option. A history suggestion and an example hint are mutually exclusive, so
+they never appear joined as one command.
 
 When `zsh-autosuggestions` is present, `live-command-help` removes its own hint
 before an autosuggestion widget runs. Right Arrow, End, and partial-accept
 widgets therefore accept only the history or completion suggestion—not the
 example text. For the earliest integration, load `zsh-autosuggestions` before
-`live-command-help`. While an autosuggestion is visible, command examples remain
-hidden; they can appear after the autosuggestion is accepted or dismissed.
+`live-command-help`. Useful autosuggestions take priority, while suggestions
+that only add a help flag yield to examples. Accepted suggestions remain free
+of additional hints until the command is edited.
 
 The integration also filters help markers accidentally saved to shell history
 by early versions of this plugin.
