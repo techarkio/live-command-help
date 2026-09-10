@@ -138,6 +138,9 @@ widgets therefore accept only the history or completion suggestion—not the
 example text. For the earliest integration, load `zsh-autosuggestions` before
 `live-command-help`.
 
+The integration also filters help markers accidentally saved to shell history
+by early versions of this plugin.
+
 ## How it works
 
 `live-command-help` registers a `line-pre-redraw` ZLE hook. When the command

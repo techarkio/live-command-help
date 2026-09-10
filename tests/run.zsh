@@ -132,4 +132,26 @@ fi
 print -- "ok - partial autosuggestion excludes help text"
 (( ++passed ))
 
+BUFFER='cd'
+POSTDISPLAY=$' Workplace/container-load-planner\n  examples:\n    cd {{path/to/directory}}\n    cd ..\n    cd asfsag'
+_LIVE_COMMAND_HELP_PANEL=''
+_zsh_autosuggest_accept
+if [[ "$BUFFER" != 'cd Workplace/container-load-planner' || -n "$POSTDISPLAY" ]]; then
+  print -u2 -- "not ok - legacy multiline history is sanitized"
+  exit 1
+fi
+print -- "ok - legacy multiline history is sanitized"
+(( ++passed ))
+
+BUFFER='git'
+POSTDISPLAY=' status  examples: git status | git log'
+_LIVE_COMMAND_HELP_PANEL=''
+_zsh_autosuggest_accept
+if [[ "$BUFFER" != 'git status' || -n "$POSTDISPLAY" ]]; then
+  print -u2 -- "not ok - legacy inline history is sanitized"
+  exit 1
+fi
+print -- "ok - legacy inline history is sanitized"
+(( ++passed ))
+
 print -- "$passed tests passed"

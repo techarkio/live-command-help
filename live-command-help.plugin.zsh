@@ -80,9 +80,26 @@ function _live_command_help_remove_old_panel() {
   fi
 }
 
+function _live_command_help_remove_legacy_panel() {
+  emulate -L zsh
+  local value=$1
+
+  # Older releases could leak their display into history through
+  # zsh-autosuggestions. Remove those exact legacy markers when such a history
+  # entry is offered again.
+  value=${value%%$'\n  examples:'*}
+  value=${value%%$'\nexamples:'*}
+  value=${value%%'  examples: '*}
+  REPLY=$value
+}
+
 function _live_command_help_strip_panel() {
   emulate -L zsh
   _live_command_help_remove_old_panel
+  if (( ${+functions[_zsh_autosuggest_accept]} ||
+        ${+functions[_live_command_help_original_autosuggest_accept]} )); then
+    _live_command_help_remove_legacy_panel "$REPLY"
+  fi
   POSTDISPLAY=$REPLY
 }
 
@@ -143,6 +160,11 @@ function _live_command_help_live_update() {
 
   _live_command_help_remove_old_panel
   base=$REPLY
+  if (( ${+functions[_zsh_autosuggest_accept]} ||
+        ${+functions[_live_command_help_original_autosuggest_accept]} )); then
+    _live_command_help_remove_legacy_panel "$base"
+    base=$REPLY
+  fi
 
   # Whitespace splitting deliberately tolerates incomplete quotes while the
   # user is still typing. Exact shell parsing would reject that common state.
