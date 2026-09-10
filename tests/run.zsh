@@ -91,4 +91,45 @@ fi
 print -- "ok - empty input clears panel"
 (( ++passed ))
 
+function _zsh_autosuggest_accept() {
+  BUFFER="$BUFFER$POSTDISPLAY"
+  POSTDISPLAY=''
+}
+function _zsh_autosuggest_execute() {
+  BUFFER="$BUFFER$POSTDISPLAY"
+  POSTDISPLAY=''
+}
+function _zsh_autosuggest_partial_accept() {
+  TEST_AUTOSUGGEST_POSTDISPLAY=$POSTDISPLAY
+}
+function _zsh_autosuggest_modify() {
+  TEST_AUTOSUGGEST_POSTDISPLAY=$POSTDISPLAY
+}
+_live_command_help_install_autosuggest_integration
+
+BUFFER='cd Wor'
+POSTDISPLAY='kplace/project'
+_LIVE_COMMAND_HELP_PANEL='  examples: cd {{path}} | cd ..'
+POSTDISPLAY+=$_LIVE_COMMAND_HELP_PANEL
+_zsh_autosuggest_accept
+if [[ "$BUFFER" != 'cd Workplace/project' || -n "$POSTDISPLAY" ]]; then
+  print -u2 -- "not ok - autosuggestion accepts no help text"
+  exit 1
+fi
+print -- "ok - autosuggestion accepts no help text"
+(( ++passed ))
+
+BUFFER='git'
+POSTDISPLAY=' status'
+_LIVE_COMMAND_HELP_PANEL='  examples: git status | git log'
+POSTDISPLAY+=$_LIVE_COMMAND_HELP_PANEL
+typeset TEST_AUTOSUGGEST_POSTDISPLAY=''
+_zsh_autosuggest_partial_accept
+if [[ "$TEST_AUTOSUGGEST_POSTDISPLAY" != ' status' ]]; then
+  print -u2 -- "not ok - partial autosuggestion excludes help text"
+  exit 1
+fi
+print -- "ok - partial autosuggestion excludes help text"
+(( ++passed ))
+
 print -- "$passed tests passed"

@@ -80,6 +80,60 @@ function _live_command_help_remove_old_panel() {
   fi
 }
 
+function _live_command_help_strip_panel() {
+  emulate -L zsh
+  _live_command_help_remove_old_panel
+  POSTDISPLAY=$REPLY
+}
+
+# zsh-autosuggestions accepts POSTDISPLAY when Right Arrow, End, or one of its
+# other accept widgets runs. Keep our informational suffix out of the accepted
+# command while leaving the autosuggestion itself intact.
+function _live_command_help_install_autosuggest_integration() {
+  emulate -L zsh
+
+  if (( ${+functions[_zsh_autosuggest_accept]} &&
+        ! ${+functions[_live_command_help_original_autosuggest_accept]} )); then
+    functions[_live_command_help_original_autosuggest_accept]=$functions[_zsh_autosuggest_accept]
+    function _zsh_autosuggest_accept() {
+      _live_command_help_strip_panel
+      _live_command_help_original_autosuggest_accept "$@"
+    }
+  fi
+
+  if (( ${+functions[_zsh_autosuggest_execute]} &&
+        ! ${+functions[_live_command_help_original_autosuggest_execute]} )); then
+    functions[_live_command_help_original_autosuggest_execute]=$functions[_zsh_autosuggest_execute]
+    function _zsh_autosuggest_execute() {
+      _live_command_help_strip_panel
+      _live_command_help_original_autosuggest_execute "$@"
+    }
+  fi
+
+  if (( ${+functions[_zsh_autosuggest_partial_accept]} &&
+        ! ${+functions[_live_command_help_original_autosuggest_partial_accept]} )); then
+    functions[_live_command_help_original_autosuggest_partial_accept]=$functions[_zsh_autosuggest_partial_accept]
+    function _zsh_autosuggest_partial_accept() {
+      _live_command_help_strip_panel
+      _live_command_help_original_autosuggest_partial_accept "$@"
+    }
+  fi
+
+  if (( ${+functions[_zsh_autosuggest_modify]} &&
+        ! ${+functions[_live_command_help_original_autosuggest_modify]} )); then
+    functions[_live_command_help_original_autosuggest_modify]=$functions[_zsh_autosuggest_modify]
+    function _zsh_autosuggest_modify() {
+      _live_command_help_strip_panel
+      _live_command_help_original_autosuggest_modify "$@"
+    }
+  fi
+
+  if (( ${+functions[_live_command_help_original_autosuggest_accept]} )); then
+    autoload -Uz add-zsh-hook
+    add-zsh-hook -d precmd _live_command_help_install_autosuggest_integration 2>/dev/null
+  fi
+}
+
 function _live_command_help_live_update() {
   emulate -L zsh
   setopt extended_glob
@@ -153,4 +207,13 @@ if [[ -o interactive ]] && [[ "${LIVE_COMMAND_HELP_LIVE:-1}" != 0 ]]; then
   autoload -Uz add-zle-hook-widget
   add-zle-hook-widget -d line-pre-redraw _live_command_help_live_update 2>/dev/null
   add-zle-hook-widget line-pre-redraw _live_command_help_live_update
+
+  # Usually zsh-autosuggestions is already loaded. The precmd fallback also
+  # covers configurations that load it after this plugin.
+  _live_command_help_install_autosuggest_integration
+  if (( ! ${+functions[_live_command_help_original_autosuggest_accept]} )); then
+    autoload -Uz add-zsh-hook
+    add-zsh-hook -d precmd _live_command_help_install_autosuggest_integration 2>/dev/null
+    add-zsh-hook precmd _live_command_help_install_autosuggest_integration
+  fi
 fi

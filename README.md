@@ -132,6 +132,12 @@ replaces the previous hint without moving the editor cursor. The hint is hidden
 when the current command leaves too little horizontal space. Existing
 `POSTDISPLAY` content from another plugin is preserved.
 
+When `zsh-autosuggestions` is present, `live-command-help` removes its own hint
+before an autosuggestion widget runs. Right Arrow, End, and partial-accept
+widgets therefore accept only the history or completion suggestion—not the
+example text. For the earliest integration, load `zsh-autosuggestions` before
+`live-command-help`.
+
 ## How it works
 
 `live-command-help` registers a `line-pre-redraw` ZLE hook. When the command
